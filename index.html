@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>任务发布平台 · 体验发布</title>
 
-  <!-- Open Graph 基本信息（用于分享到朋友圈/群聊时的卡片展示，平台是否采信取决于各自策略） -->
+  <!-- Open Graph 基本信息（用于分享到聊天/群聊时的卡片展示，平台是否采信取决于各自策略） -->
   <meta property="og:title" content="任务发布平台 · 体验发布">
   <meta property="og:description" content="3 步体验发布任务：选类型 → 填要点 → 一键提交（演示环境，不产生真实订单）">
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#e33333">
 
   <style>
-    /* ===== 设计主色（延续现有移动端风格：京东红） ===== */
+    /* ===== 设计主色（移动端优先：京东红） ===== */
     :root{
       --primary: #e33333;
       --primary-dark:#cc0000;
@@ -64,12 +64,12 @@
       box-shadow: inset 0 0 0 2px rgba(227,51,51,.15);
     }
     .brand b{font-size:16px}
-    .share-btn, .copy-btn{
+    .wx-btn{
       border:1px solid rgba(255,255,255,.6);
       color:#fff; background:transparent;
-      height:32px; padding:0 10px; border-radius:999px; cursor:pointer;
+      height:32px; padding:0 12px; border-radius:999px; cursor:pointer;
     }
-    .share-btn:active, .copy-btn:active{ transform: scale(.98); }
+    .wx-btn:active{ transform: scale(.98); }
 
     /* ===== 容器 ===== */
     .container{ padding:16px; padding-bottom:92px; max-width:520px; margin:0 auto; }
@@ -157,10 +157,10 @@
     .dialog p{ margin:4px 0; color:#444; }
     .dialog .ok{ width:100%; height:42px; border:none; border-radius:10px; background:var(--primary); color:#fff; font-weight:700; }
 
-    /* 顶部浮动 Tips（分享指引） */
+    /* 顶部浮动 Tips（用于轻量 Toast） */
     .tips{
       position:fixed; top:8px; right:8px; background:rgba(0,0,0,.72); color:#fff; padding:10px 12px;
-      border-radius:12px; font-size:12px; width: 230px; display:none; z-index:100;
+      border-radius:12px; font-size:12px; width: 260px; display:none; z-index:100;
     }
     .tips:after{
       content:""; position:absolute; top:-6px; right:22px; width:0; height:0;
@@ -184,7 +184,7 @@
   </style>
 </head>
 <body>
-  <!-- 顶部应用栏：品牌 + 分享/复制 -->
+  <!-- 顶部应用栏：品牌 + 联系微信 -->
   <header class="appbar">
     <div class="appbar-row">
       <div class="brand">
@@ -192,10 +192,8 @@
         <div><b>任务发布平台</b> · 体验发布</div>
       </div>
       <div style="display:flex; gap:8px;">
-        <!-- 分享指引按钮（展示提示气泡） -->
-        <button class="share-btn" id="btnGuide">分享指引</button>
-        <!-- 复制当前链接 -->
-        <button class="copy-btn" id="btnCopy">复制链接</button>
+        <!-- 联系微信（点击复制指定微信号） -->
+        <button class="wx-btn" id="btnWeChat">联系微信</button>
       </div>
     </div>
   </header>
@@ -323,19 +321,20 @@
     </section>
   </main>
 
-  <!-- 底部固定信息条：免责声明 + 返回顶部 -->
+  <!-- 底部固定信息条：声明 + 返回顶部 -->
   <footer class="footerbar">
-    <small>免责声明：演示环境，仅用于体验发布流程。</small>
+    <small>
+      免责声明：演示环境，仅用于体验发布流程。
+      <b>此页面仅为展示页面，版权所有，禁止盗用。</b>
+    </small>
     <div style="display:flex; gap:8px;">
       <button class="mini" id="toTop">返回顶部</button>
       <button class="mini primary" id="again" style="display:none;">再次体验</button>
     </div>
   </footer>
 
-  <!-- 分享提示气泡 -->
-  <aside class="tips" id="tips">
-    在微信中：点击右上角 ··· → 选择【分享到朋友圈/发送给朋友】即可把体验页分享给客户。
-  </aside>
+  <!-- 顶部浮动 Tips（作为轻量 Toast） -->
+  <aside class="tips" id="tips">提示</aside>
 
   <!-- 成功弹窗 -->
   <div class="mask" id="mask">
@@ -360,7 +359,6 @@
     // ---------- 定义不同任务类型的计算规则（演示口径） ----------
     // 约定：均不产生负数，且设置最低数量/时长等约束
     const PRICING = {
-      // 直播间：按照“人 × 小时 × 单价”计价
       live: (num, hours, interaction='normal') => {
         const unit = interaction === 'high' ? 10 : 8;   // 元/人·小时
         const subtotal = unit * num * hours;
@@ -368,44 +366,24 @@
         const total = subtotal + fee;
         return { unit:`${unit} 元/人·小时`, fee, subtotal, total };
       },
-      // 评论：按照“条 × 单价”计价
       comment: (num) => {
-        const unit = 0.50; // 元/条
-        const subtotal = unit * num;
-        const fee = subtotal * 0.10;
-        const total = subtotal + fee;
+        const unit = 0.50; const subtotal = unit * num; const fee = subtotal * 0.10; const total = subtotal + fee;
         return { unit:`${unit.toFixed(2)} 元/条`, fee, subtotal, total };
       },
-      // 关注：按照“次 × 单价”计价
       follow: (num) => {
-        const unit = 0.30; // 元/次
-        const subtotal = unit * num;
-        const fee = subtotal * 0.10;
-        const total = subtotal + fee;
+        const unit = 0.30; const subtotal = unit * num; const fee = subtotal * 0.10; const total = subtotal + fee;
         return { unit:`${unit.toFixed(2)} 元/次`, fee, subtotal, total };
       },
-      // 点赞：按照“次 × 单价”计价
       like: (num) => {
-        const unit = 0.20; // 元/次
-        const subtotal = unit * num;
-        const fee = subtotal * 0.10;
-        const total = subtotal + fee;
+        const unit = 0.20; const subtotal = unit * num; const fee = subtotal * 0.10; const total = subtotal + fee;
         return { unit:`${unit.toFixed(2)} 元/次`, fee, subtotal, total };
       },
-      // 分享：按照“次 × 单价”计价
       share: (num) => {
-        const unit = 0.40; // 元/次
-        const subtotal = unit * num;
-        const fee = subtotal * 0.10;
-        const total = subtotal + fee;
+        const unit = 0.40; const subtotal = unit * num; const fee = subtotal * 0.10; const total = subtotal + fee;
         return { unit:`${unit.toFixed(2)} 元/次`, fee, subtotal, total };
       },
-      // 其他：按照“条 × 单价”计价（示意）
       other: (num) => {
-        const unit = 1.00; // 元/条（占位）
-        const subtotal = unit * num;
-        const fee = subtotal * 0.10;
-        const total = subtotal + fee;
+        const unit = 1.00; const subtotal = unit * num; const fee = subtotal * 0.10; const total = subtotal + fee;
         return { unit:`${unit.toFixed(2)} 元/条`, fee, subtotal, total };
       }
     };
@@ -443,10 +421,9 @@
     const submit = document.getElementById('submit');
 
     const tips = document.getElementById('tips');
-    const btnGuide = document.getElementById('btnGuide');
-    const btnCopy = document.getElementById('btnCopy');
     const toTop = document.getElementById('toTop');
     const again = document.getElementById('again');
+    const btnWeChat = document.getElementById('btnWeChat');
 
     const mask = document.getElementById('mask');
     const ok = document.getElementById('ok');
@@ -462,32 +439,27 @@
       if(!card) return;
       currentType = card.dataset.type;
 
-      // 标题与提示
       const mapName = { live:'直播间', comment:'评论区', follow:'关注', like:'点赞', share:'分享转发', other:'其他' };
       formTitle.textContent = `${mapName[currentType] || '发布任务'}（体验）`;
       formHint.textContent = '演示环境 · 仅生成模拟订单号';
 
-      // 字段显示逻辑
       fieldLive.style.display = (currentType==='live') ? 'block' : 'none';
       blkHours.style.display   = (currentType==='live') ? 'block' : 'none';
 
-      // 标签与数量说明
       if(currentType==='live'){
         labelLink.textContent = '直播间链接 / 房间号';
         labelPeople.textContent = '人数（人）';
-        num.value = Math.max(10, Number(num.value)||10); // 直播默认至少 10 人
+        num.value = Math.max(10, Number(num.value)||10);
         hours.value = Math.max(1, Number(hours.value)||1);
       }else{
         labelLink.textContent = '目标链接';
         labelPeople.textContent = '数量（条/次）';
-        num.value = Math.max(10, Number(num.value)||10); // 其他类型默认至少 10
+        num.value = Math.max(10, Number(num.value)||10);
       }
 
-      // 显示表单，滚动到可视区域
       formCard.style.display = 'block';
       formCard.scrollIntoView({behavior:'smooth', block:'start'});
 
-      // 首次进入计算金额
       recalc();
       checkSubmit();
     });
@@ -501,7 +473,7 @@
     plus.addEventListener('click', ()=>{
       const v = Math.max(1, Number(num.value||1) + 1);
       num.value = v;
-      if(currentType==='live') num.value = Math.max(10, v); // 直播至少 10 人
+      if(currentType==='live') num.value = Math.max(10, v);
       recalc();
     });
     minusH?.addEventListener('click', ()=>{
@@ -550,30 +522,22 @@
       submit.disabled = !ready;
     }
 
-    // ---------- 复制链接 ----------
-    btnCopy.addEventListener('click', async ()=>{
-      try{
-        await navigator.clipboard.writeText(location.href);
-        toast('链接已复制');
-      }catch{
-        // 回退方案：创建隐藏输入框选择复制
-        const ta = document.createElement('textarea');
-        ta.value = location.href; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-        toast('链接已复制');
-      }
-    });
-
-    // ---------- 分享指引气泡 ----------
-    let guideTimer = null;
-    btnGuide.addEventListener('click', ()=>{
-      tips.style.display='block';
-      clearTimeout(guideTimer);
-      guideTimer = setTimeout(()=> tips.style.display='none', 3200);
-    });
-
     // ---------- 返回顶部 ----------
     toTop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+    // ---------- 联系微信：复制“Beguette”并提示前往添加 ----------
+    btnWeChat.addEventListener('click', async ()=>{
+      const wx = 'Beguette';
+      try{
+        await navigator.clipboard.writeText(wx);
+        toast('微信号“Beguette”已复制，前往微信添加即可联系。');
+      }catch{
+        const ta = document.createElement('textarea');
+        ta.value = wx; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        toast('微信号“Beguette”已复制，前往微信添加即可联系。');
+      }
+    });
 
     // ---------- 提交逻辑（演示）：成功弹窗 + 60 秒冷却 ----------
     let cooling = false;
@@ -583,15 +547,12 @@
     submit.addEventListener('click', ()=>{
       if(cooling) return;
 
-      // 生成模拟订单号（时间戳 + 随机数）
       const oid = 'EXP' + Date.now().toString().slice(-8) + (Math.random().toString().slice(2,6));
       orderInfo.textContent = '订单号：' + oid;
       moneyInfo.textContent = '应付金额：' + total.textContent;
 
-      // 展示成功弹窗
       mask.style.display='grid';
 
-      // 进入冷却：60 秒内按钮不可再次点击
       cooling = true;
       remain = 60;
       submit.disabled = true;
@@ -607,8 +568,8 @@
         submit.disabled = false;
         submit.textContent = '立即体验发布';
         cooling = false;
-        again.style.display = 'inline-block'; // 冷却后可再次体验
-        toast('已解除 60 秒冷却，可再次体验');
+        again.style.display = 'inline-block';
+        toast('已解除 60 秒冷却，可再次体验。');
         return;
       }
       submit.textContent = `已提交（${remain}s 后可再次体验）`;
@@ -637,7 +598,7 @@
       tips.textContent = text;
       tips.style.display = 'block';
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>{ tips.style.display = 'none'; tips.textContent='在微信中：点击右上角 ··· → 选择【分享到朋友圈/发送给朋友】即可把体验页分享给客户。'; }, 2000);
+      toastTimer = setTimeout(()=>{ tips.style.display = 'none'; tips.textContent='提示'; }, 2200);
     }
   </script>
 </body>
